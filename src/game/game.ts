@@ -155,24 +155,35 @@ export class Game {
   }
 
   private _processInput() {
-    if (this._input.hasPointerDown()) {
-      const mouse_pos = this._input.pointerPosition;
-      const bound = this.charactersBound;
-      const a = this._currentScene.a;
-      const b = this._currentScene.b;
-      const a_pos = a.center;
-      const b_pos = b.center;
+    const mouse_pos = this._input.pointerPosition;
+    const bound = this.charactersBound;
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
+    const a_pos = a.center;
+    const b_pos = b.center;
+
+    if (bound) {
       const m_pos: Vector2 = [0, 0];
       scale(m_pos, add(m_pos, a_pos, b_pos), 0.5);
-      const target_pos = bound ? m_pos : a_pos;
       const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, target_pos, mouse_pos));
+      normalize(movement, subtract(movement, m_pos, mouse_pos));
       subtract(a.pos, a.pos, movement);
-      if (this.charactersBound) {
-        subtract(b.pos, b.pos, movement);
-      }
+      subtract(b.pos, b.pos, movement);
+      this._input.tick();
+      return;
     }
 
+    if (this._input.hasPointerDown(0)) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, a_pos, mouse_pos));
+      subtract(a.pos, a.pos, movement);
+    }
+
+    if (this._input.hasPointerDown(2)) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, b_pos, mouse_pos));
+      subtract(b.pos, b.pos, movement);
+    }
     this._input.tick();
   }
 }
