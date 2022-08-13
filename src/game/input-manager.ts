@@ -1,15 +1,33 @@
+import { Vector2 } from '../math/vector2';
+
 export class InputManager {
   private _previousKeyState: Set<string> = new Set<string>();
   private _currentKeyState: Set<string> = new Set<string>();
   private _previousPointerState: Set<number> = new Set<number>();
   private _currentPointerState: Set<number> = new Set<number>();
+  private _currentPointerPosition: Vector2 = [0, 0];
+  private _element: HTMLCanvasElement;
 
-  public constructor(element: HTMLElement) {
+  public constructor(element: HTMLCanvasElement) {
+    this._element = element;
     document.addEventListener('keydown', this._onKeyDown.bind(this));
     document.addEventListener('keyup', this._onKeyUp.bind(this));
     element.addEventListener('pointerdown', this._onPointerDown.bind(this));
     element.addEventListener('pointerup', this._onPointerUp.bind(this));
     element.addEventListener('contextmenu', (ev) => ev.preventDefault());
+    element.addEventListener('pointermove', this._onPointerMove.bind(this));
+  }
+
+  private _onPointerMove(ev: PointerEvent) {
+    const ele = this._element;
+    const rect = ele.getBoundingClientRect(),
+      scaleX = ele.width / rect.width,
+      scaleY = ele.height / rect.height;
+
+    this._currentPointerPosition = [
+      (ev.clientX - rect.left) * scaleX,
+      (ev.clientY - rect.top) * scaleY,
+    ];
   }
 
   private _onKeyDown(ev: KeyboardEvent) {
@@ -63,6 +81,10 @@ export class InputManager {
       this._previousPointerState.has(button) &&
       !this._currentPointerState.has(button)
     );
+  }
+
+  public get pointerPosition(): Vector2 {
+    return this._currentPointerPosition;
   }
 
   public tick() {

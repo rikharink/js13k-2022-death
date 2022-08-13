@@ -48,20 +48,13 @@ async function showDebugGUI() {
   createStatsGUI();
   showStatsGUI(settings.debugSettings.showStats);
 
-  const forceMonetization = debugControls.add(
-    settings.debugSettings,
-    'forceMonetization',
-    settings.debugSettings.forceMonetization,
-  );
+  debugControls.add(state.game!, 'monetized', state.game!.monetized);
 
-  forceMonetization.onChange(function (v: boolean) {
-    state.game!.monetized = v;
-    if (v) {
-      console.log('Monetization forced on');
-    } else {
-      console.log('Monetization forced off');
-    }
-  });
+  debugControls.add(
+    state.game!,
+    'charactersBound',
+    state.game!.charactersBound,
+  );
 }
 
 if (process.env.NODE_ENV === 'development') {

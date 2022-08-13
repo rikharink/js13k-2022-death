@@ -132,8 +132,12 @@ export function rgbToHsl(rgb: RgbColor): HslColor {
   return [h, s, l];
 }
 
-export function rgbaString(color: RgbColor, alpha: number): string {
-  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+export function rgbaString(color: RgbaColor): string {
+  return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3]})`;
+}
+
+export function rgbString(color: RgbColor): string {
+  return rgbaString([...color, 1]);
 }
 
 export function hexToRgb(hex: string): RgbColor {

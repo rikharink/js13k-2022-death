@@ -34,7 +34,7 @@ if (isDev) {
 
 const plugins = [
   html2({
-    title: 'JS13K 2022',
+    title: 'Till Death Us Do Part',
     template: join('src', 'index.html'),
     minify: false,
     externals: {
