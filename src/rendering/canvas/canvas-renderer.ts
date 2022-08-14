@@ -1,6 +1,7 @@
 import { Character } from '../../game/character';
 import { Scene } from '../../game/scene';
 import {
+  darken,
   mixRyb,
   rgbaString,
   rgbString,
@@ -21,6 +22,20 @@ export class CanvasRenderer implements Renderer {
   constructor(canvas: Canvas) {
     this.canvas = canvas;
     this.ctx = canvas.canvas.getContext('2d')!;
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.fillRect(
+      0,
+      0,
+      this.canvas.canvas.width,
+      this.canvas.canvas.height,
+    );
+    this.ctx.fillStyle = '#000000';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.font = 'normal bold 4rem sans-serif';
+    const hw = canvas.canvas.width * 0.5;
+    const hh = canvas.canvas.height * 0.5;
+    this.ctx.fillText('CLICK TO START', hw, hh);
   }
 
   private _clear(color: RgbaColor) {
@@ -32,10 +47,11 @@ export class CanvasRenderer implements Renderer {
 
   private _renderCharacter(c: Character) {
     const ctx = this.ctx;
+    const strokeWidth = 4;
     ctx.save();
     ctx.fillStyle = rgbString(c.color);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = rgbString(darken(c.color, 50));
+    ctx.lineWidth = strokeWidth;
     ctx.fillRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);
     if (c.followPointer) {
       ctx.strokeRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);

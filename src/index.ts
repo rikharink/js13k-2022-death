@@ -12,7 +12,11 @@ const canvas = new Canvas({
 });
 const renderer = new CanvasRenderer(canvas);
 state.game = new Game(renderer);
-state.game.start();
+renderer.canvas.canvas.onclick = () => {
+  renderer.canvas.canvas.onclick = null;
+  renderer.canvas.canvas.classList.add('no-cursor');
+  state.game!.start();
+};
 
 if (process.env.NODE_ENV === 'development') {
   showDebugGUI();

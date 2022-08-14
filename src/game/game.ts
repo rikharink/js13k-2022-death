@@ -1,10 +1,11 @@
 import { AudioManager } from '../audio/audio-manager';
+import { playKick } from '../audio/instruments/kick';
 import { stats } from '../debug/gui';
 import { add, normalize, scale, subtract, Vector2 } from '../math/vector2';
 import { CanvasRenderer } from '../rendering/canvas/canvas-renderer';
 import { Renderer } from '../rendering/renderer';
 import settings from '../settings';
-import { Milliseconds } from '../types';
+import { Milliseconds, Seconds } from '../types';
 import { Character } from './character';
 import { InputManager } from './input-manager';
 import { Scene } from './scene';
@@ -15,7 +16,7 @@ export class Game {
   private _then?: number;
   private _t = 0;
   private _accumulator = 0;
-  private _framecount = 0;
+  private _stepcount = 0;
   private _input: InputManager;
   private _audioManager?: AudioManager;
   private _currentScene!: Scene;
@@ -32,6 +33,7 @@ export class Game {
   public renderer: Renderer;
   public monetized = false;
   public charactersBound = true;
+  private _framecount: any;
 
   constructor(renderer: Renderer) {
     this._setupScene();
@@ -69,11 +71,11 @@ export class Game {
     const [w, h] = settings.rendererSettings.resolution;
     const hw = w * 0.5;
     const hh = h * 0.5;
-    const cw = 64;
+    const cw = 42;
     const ch = 64;
     const hcw = cw * 0.5;
     const hch = ch * 0.5;
-    const cp = cw * 0.25;
+    const cp = 2;
     const char_size: Vector2 = [cw, ch];
 
     const a = new Character({
@@ -110,14 +112,15 @@ export class Game {
       while (this._accumulator >= settings.dt) {
         this._t += settings.dt;
         //DO FIXED STEP STUFF
-        this.updatePlayer();
-        this.updateEnemies();
-        this._framecount++;
+        this._updatePlayer();
+        this._updateEnemies();
+        this._stepcount++;
         this._accumulator -= settings.dt;
       }
-
       const alpha = this._accumulator / settings.dt;
       //DO VARIABLE STEP STUFF
+      this._framecount++;
+      this._audioManager?.tick();
       this._processInput();
       this.renderer.render(this._currentScene, this._input.pointerPosition);
     }
@@ -127,7 +130,7 @@ export class Game {
     }
   }
 
-  private updateEnemies() {
+  private _updateEnemies() {
     for (const e of this._currentScene.e) {
       const closest = e.closest(this._currentScene.a, this._currentScene.b);
       const movement: Vector2 = [0, 0];
@@ -135,13 +138,13 @@ export class Game {
       subtract(e.pos, e.pos, movement);
     }
 
-    if (this._framecount % 100 === 0 && this._currentScene.e.length < 10) {
+    if (this._stepcount % 100 === 0 && this._currentScene.e.length < 10) {
       this._currentScene.spawnEnemy();
       console.log('Enemy count:', this._currentScene.e.length);
     }
   }
 
-  private updatePlayer() {
+  private _updatePlayer() {
     const mouse_pos = this._input.pointerPosition;
     const bound = this.charactersBound;
     const a = this._currentScene.a;
@@ -202,6 +205,11 @@ export class Game {
         this._currentScene.a.followPointer = this._currentScene.b.followPointer;
       }
     }
+
+    if (this._input.hasKeyUp('m')) {
+      this._audioManager?.toggleMute();
+    }
+
     this._input.tick();
   }
 }

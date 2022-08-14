@@ -1,3 +1,5 @@
+import { Seconds } from '../types';
+
 export const enum Note {
   A = 0,
   As = 1,
@@ -27,3 +29,9 @@ export const enum Mode {
 }
 
 export type Frequency = number;
+
+export type SfxTrigger = (
+  when: Seconds,
+  ctx: AudioContext,
+  output?: AudioNode,
+) => void;
