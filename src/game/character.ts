@@ -26,6 +26,7 @@ export class Character {
   public speed: number;
   public health: number;
   public status: Status;
+  public followPointer: boolean;
 
   constructor({
     pos = [0, 0],
@@ -43,6 +44,7 @@ export class Character {
     this.health = health;
     this.speed = speed;
     this.status = status;
+    this.followPointer = false;
   }
 
   public get center(): Vector2 {

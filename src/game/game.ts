@@ -110,19 +110,8 @@ export class Game {
       while (this._accumulator >= settings.dt) {
         this._t += settings.dt;
         //DO FIXED STEP STUFF
-
-        //UPDATE ENEMIES
-        for (const e of this._currentScene.e) {
-          const closest = e.closest(this._currentScene.a, this._currentScene.b);
-          const movement: Vector2 = [0, 0];
-          normalize(movement, subtract(movement, e.center, closest.center));
-          subtract(e.pos, e.pos, movement);
-        }
-
-        if (this._framecount % 100 === 0 && this._currentScene.e.length < 10) {
-          this._currentScene.spawnEnemy();
-          console.log('Enemy count:', this._currentScene.e.length);
-        }
+        this.updatePlayer();
+        this.updateEnemies();
         this._framecount++;
         this._accumulator -= settings.dt;
       }
@@ -135,6 +124,51 @@ export class Game {
     this._then = now;
     if (process.env.NODE_ENV === 'development') {
       stats.end();
+    }
+  }
+
+  private updateEnemies() {
+    for (const e of this._currentScene.e) {
+      const closest = e.closest(this._currentScene.a, this._currentScene.b);
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, e.center, closest.center));
+      subtract(e.pos, e.pos, movement);
+    }
+
+    if (this._framecount % 100 === 0 && this._currentScene.e.length < 10) {
+      this._currentScene.spawnEnemy();
+      console.log('Enemy count:', this._currentScene.e.length);
+    }
+  }
+
+  private updatePlayer() {
+    const mouse_pos = this._input.pointerPosition;
+    const bound = this.charactersBound;
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
+    const a_pos = a.center;
+    const b_pos = b.center;
+
+    if (bound && (a.followPointer || b.followPointer)) {
+      const target: Vector2 = [0, 0];
+      scale(target, add(target, a_pos, b_pos), 0.5);
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, target, mouse_pos));
+      subtract(a.pos, a.pos, movement);
+      subtract(b.pos, b.pos, movement);
+      return;
+    }
+
+    if (a.followPointer) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, a_pos, mouse_pos));
+      subtract(a.pos, a.pos, movement);
+    }
+
+    if (b.followPointer) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, b_pos, mouse_pos));
+      subtract(b.pos, b.pos, movement);
     }
   }
 
@@ -155,34 +189,18 @@ export class Game {
   }
 
   private _processInput() {
-    const mouse_pos = this._input.pointerPosition;
-    const bound = this.charactersBound;
-    const a = this._currentScene.a;
-    const b = this._currentScene.b;
-    const a_pos = a.center;
-    const b_pos = b.center;
-
-    if (bound) {
-      const m_pos: Vector2 = [0, 0];
-      scale(m_pos, add(m_pos, a_pos, b_pos), 0.5);
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, m_pos, mouse_pos));
-      subtract(a.pos, a.pos, movement);
-      subtract(b.pos, b.pos, movement);
-      this._input.tick();
-      return;
+    if (this._input.hasPointerUp(0)) {
+      this._currentScene.a.followPointer = !this._currentScene.a.followPointer;
+      if (this.charactersBound) {
+        this._currentScene.b.followPointer = this._currentScene.a.followPointer;
+      }
     }
 
-    if (this._input.hasPointerDown(0)) {
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, a_pos, mouse_pos));
-      subtract(a.pos, a.pos, movement);
-    }
-
-    if (this._input.hasPointerDown(2)) {
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, b_pos, mouse_pos));
-      subtract(b.pos, b.pos, movement);
+    if (this._input.hasPointerUp(2)) {
+      this._currentScene.b.followPointer = !this._currentScene.b.followPointer;
+      if (this.charactersBound) {
+        this._currentScene.a.followPointer = this._currentScene.b.followPointer;
+      }
     }
     this._input.tick();
   }

@@ -9,6 +9,7 @@ export type Degree = number;
 export type RgbaColor = [r: number, g: number, b: number, a: number];
 export type NormalizedRgbaColor = RgbaColor;
 export type RgbColor = [r: number, g: number, b: number];
+export type RybColor = [r: number, y: number, b: number];
 export type NormalizedRgbColor = RgbColor;
 export type HslColor = [h: number, s: number, l: number];
 export type Percentage = number;

@@ -1,8 +1,15 @@
 import { Character } from '../../game/character';
 import { Scene } from '../../game/scene';
-import { rgbaString, rgbString } from '../../math/color';
+import {
+  mixRyb,
+  rgbaString,
+  rgbString,
+  rgbToRyb,
+  rybToRgb,
+} from '../../math/color';
 import { TAU } from '../../math/util';
 import { Vector2 } from '../../math/vector2';
+import { add, scale, Vector3 } from '../../math/vector3';
 import settings from '../../settings';
 import { RgbaColor } from '../../types';
 import { Canvas } from '../canvas';
@@ -27,7 +34,12 @@ export class CanvasRenderer implements Renderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.fillStyle = rgbString(c.color);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 4;
     ctx.fillRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);
+    if (c.followPointer) {
+      ctx.strokeRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);
+    }
     ctx.restore();
   }
 
@@ -38,10 +50,30 @@ export class CanvasRenderer implements Renderer {
 
     const ctx = this.ctx;
     if (pointerPosition) {
+      const col_a = scene.a.color;
+      const col_b = scene.b.color;
+      const col_mix: Vector3 = [0, 0, 0];
+      add(col_mix, col_a, col_b);
+      col_mix[0] = Math.min(255, col_mix[0]);
+      col_mix[1] = Math.min(255, col_mix[1]);
+      col_mix[2] = Math.min(255, col_mix[2]);
+
+      let col: Vector3 = [0, 0, 0];
+      let alpha = 0.5;
+      if (scene.a.followPointer && scene.b.followPointer) {
+        col = col_mix;
+        alpha = 1;
+      } else if (scene.a.followPointer) {
+        col = col_a;
+        alpha = 1;
+      } else if (scene.b.followPointer) {
+        col = col_b;
+        alpha = 1;
+      }
       ctx.save();
-      ctx.fillStyle = rgbaString([255, 0, 0, 0.5]);
+      ctx.fillStyle = rgbaString([...col, alpha]);
       ctx.beginPath();
-      ctx.arc(pointerPosition[0], pointerPosition[1], 32, 0, TAU, false);
+      ctx.arc(pointerPosition[0], pointerPosition[1], 16, 0, TAU, false);
       ctx.fill();
       ctx.restore();
     }

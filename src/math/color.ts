@@ -4,6 +4,7 @@ import {
   HslColor,
   RgbaColor,
   NormalizedRgbColor,
+  RybColor,
 } from '../types';
 
 export function lighten(color: RgbColor, percentage: Percentage): RgbColor {
@@ -39,6 +40,44 @@ export function normalizeRgb(rgb: RgbColor): RgbColor {
 
 export function normalizeRgba(rgba: RgbaColor): RgbaColor {
   return [rgba[0] / 255, rgba[1] / 255, rgba[2] / 255, rgba[3] / 255];
+}
+
+export function rgbToRyb(rgb: RgbColor): RybColor {
+  const [r, g, b] = rgb;
+  const Iw = Math.min(r, g, b);
+  const Ib = Math.min(255 - r, 255 - g, 255 - b);
+  const rRGB = r - Iw;
+  const gRGB = g - Iw;
+  const bRGB = b - Iw;
+  const minRG = Math.min(rRGB, gRGB);
+  const rRYB = rRGB - minRG;
+  const yRYB = (gRGB + minRG) / 2;
+  const bRYB = (bRGB + gRGB - minRG) / 2;
+  const n = Math.max(rRYB, yRYB, bRYB, 1) / Math.max(rRGB, gRGB, bRGB, 1);
+  return [rRYB / n + Ib, yRYB / n + Ib, bRYB / n + Ib];
+}
+
+export function rybToRgb(ryb: RybColor): RgbColor {
+  const [r, y, b] = ryb;
+  const Iw = Math.min(r, y, b);
+  const Ib = Math.min(255 - r, 255 - y, 255 - b);
+  const rRYB = r - Iw;
+  const yRYB = y - Iw;
+  const bRYB = b - Iw;
+  const minYB = Math.min(yRYB, bRYB);
+  const rRGB = rRYB + yRYB - minYB;
+  const gRGB = yRYB + 2 * minYB;
+  const bRGB = 2 * (bRYB - minYB);
+  const n = Math.max(rRGB, gRGB, bRGB, 1) / Math.max(rRYB, yRYB, bRYB, 1);
+  return [rRGB / n + Ib, gRGB / n + Ib, bRGB / n + Ib];
+}
+
+export function mixRyb(a: RybColor, b: RybColor): RybColor {
+  return [
+    Math.min(255, a[0] + b[0]),
+    Math.min(255, a[1] + b[1]),
+    Math.min(255, a[2] + b[2]),
+  ];
 }
 
 //FROM: https://css-tricks.com/converting-color-spaces-in-javascript/
