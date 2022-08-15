@@ -11,7 +11,17 @@ export function lerp(v0: number, v1: number, t: number) {
   return v0 + t * (v1 - v0);
 }
 
-export function clamp(min: number, max: number, n: number) {
+export function smoothstep(x: number, min: number, max: number) {
+  x = clamp(normalize(x, min, max), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+export function smootherstep(x: number, min: number, max: number) {
+  x = clamp(normalize(x, min, max), 0, 1);
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 

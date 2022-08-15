@@ -179,6 +179,10 @@ export function rgbString(color: RgbColor): string {
   return rgbaString([...color, 1]);
 }
 
+export function rgbToRgbaString(color: RgbColor, alpha: number) {
+  return rgbaString([...color, alpha]);
+}
+
 export function hexToRgb(hex: string): RgbColor {
   let c: string[];
   if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {

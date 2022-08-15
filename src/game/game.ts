@@ -1,14 +1,12 @@
 import { AudioManager } from '../audio/audio-manager';
-import { playKick } from '../audio/instruments/kick';
 import { stats } from '../debug/gui';
 import { add, normalize, scale, subtract, Vector2 } from '../math/vector2';
-import { CanvasRenderer } from '../rendering/canvas/canvas-renderer';
 import { Renderer } from '../rendering/renderer';
 import settings from '../settings';
-import { Milliseconds, Seconds } from '../types';
-import { Character } from './character';
+import { Milliseconds } from '../types';
+import { Character, CharacterType, Status } from './character';
 import { InputManager } from './input-manager';
-import { Scene } from './scene';
+import { interpolateScene, Scene } from './scene';
 
 export class Game {
   private _running = true;
@@ -20,6 +18,7 @@ export class Game {
   private _input: InputManager;
   private _audioManager?: AudioManager;
   private _currentScene!: Scene;
+  private _previousScene?: Scene;
 
   private _audioInitHandler: () => void = (() => {
     console.log('init audio');
@@ -33,7 +32,7 @@ export class Game {
   public renderer: Renderer;
   public monetized = false;
   public charactersBound = true;
-  private _framecount: any;
+  private _framecount = 0;
 
   constructor(renderer: Renderer) {
     this._setupScene();
@@ -71,7 +70,7 @@ export class Game {
     const [w, h] = settings.rendererSettings.resolution;
     const hw = w * 0.5;
     const hh = h * 0.5;
-    const cw = 42;
+    const cw = 64;
     const ch = 64;
     const hcw = cw * 0.5;
     const hch = ch * 0.5;
@@ -81,18 +80,24 @@ export class Game {
     const a = new Character({
       pos: [hw - hcw - cp, hh],
       size: char_size,
-      color: [255, 0, 0],
+      color: [255, 128, 176],
       name: 'a',
+      type: CharacterType.Player,
     });
 
     const b = new Character({
       pos: [hw + hcw + cp, hh],
       size: char_size,
-      color: [0, 255, 0],
+      color: [148, 140, 222],
       name: 'b',
+      type: CharacterType.Player,
     });
 
-    this._currentScene = new Scene(a, b);
+    this._currentScene = { a: a, b: b, e: [] };
+  }
+
+  private _reset() {
+    this._setupScene();
   }
 
   loop(now: Milliseconds) {
@@ -112,8 +117,8 @@ export class Game {
       while (this._accumulator >= settings.dt) {
         this._t += settings.dt;
         //DO FIXED STEP STUFF
-        this._updatePlayer();
         this._updateEnemies();
+        this._updatePlayer();
         this._stepcount++;
         this._accumulator -= settings.dt;
       }
@@ -122,7 +127,11 @@ export class Game {
       this._framecount++;
       this._audioManager?.tick();
       this._processInput();
-      this.renderer.render(this._currentScene, this._input.pointerPosition);
+      const interpolatedScene = this._previousScene
+        ? interpolateScene(this._currentScene, this._previousScene, alpha)
+        : this._currentScene;
+      this.renderer.render(interpolatedScene, this._input.pointerPosition);
+      this._previousScene = JSON.parse(JSON.stringify(this._currentScene));
     }
     this._then = now;
     if (process.env.NODE_ENV === 'development') {
@@ -130,17 +139,47 @@ export class Game {
     }
   }
 
+  private static _getTarget(a: Character, b: Character, closest: Character) {
+    if (a.isDead()) {
+      return b;
+    }
+    if (b.isDead()) {
+      return a;
+    }
+    return closest;
+  }
+
+  private _spawnEnemy() {
+    this._currentScene.e.push(
+      new Character({
+        pos: [0, settings.rendererSettings.resolution[1]],
+        size: [32, 32],
+        color: [174, 247, 189],
+        name: 'e',
+      }),
+    );
+  }
+
   private _updateEnemies() {
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
     for (const e of this._currentScene.e) {
-      const closest = e.closest(this._currentScene.a, this._currentScene.b);
+      const closest = e.closest(a, b);
+      e.target = Game._getTarget(a, b, closest);
       const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, e.center, closest.center));
+      normalize(movement, subtract(movement, e.center, e.target.center));
       subtract(e.pos, e.pos, movement);
+
+      if (a.health > 0 && e.collidesWith(a)) {
+        a.health--;
+      }
+      if (b.health > 0 && e.collidesWith(b)) {
+        b.health--;
+      }
     }
 
     if (this._stepcount % 100 === 0 && this._currentScene.e.length < 10) {
-      this._currentScene.spawnEnemy();
-      console.log('Enemy count:', this._currentScene.e.length);
+      this._spawnEnemy();
     }
   }
 
@@ -173,6 +212,38 @@ export class Game {
       normalize(movement, subtract(movement, b_pos, mouse_pos));
       subtract(b.pos, b.pos, movement);
     }
+
+    if (a.isAlive() && a.health <= 0) {
+      a.status = Status.Dead;
+      this._currentScene.a_body = a.getBody();
+      //TODO: randomize or something?
+      a.pos = [0, 0];
+    }
+
+    if (b.isAlive() && b.health <= 0) {
+      b.status = Status.Dead;
+      this._currentScene.b_body = b.getBody();
+      //TODO: randomize or something?
+      b.pos = [0, 0];
+    }
+
+    if (a.isDead() && a.collidesWith(this._currentScene.a_body!)) {
+      this._currentScene.a_body = undefined;
+      a.status = Status.Alive;
+      a.health = 100;
+    }
+
+    if (b.isDead() && b.collidesWith(this._currentScene.b_body!)) {
+      this._currentScene.b_body = undefined;
+      b.status = Status.Alive;
+      b.health = 100;
+    }
+
+    if (a.isDead() && b.isDead()) {
+      //TODO: GAME OVER
+    }
+
+    this.charactersBound = a.isAlive() && b.isAlive();
   }
 
   public start() {

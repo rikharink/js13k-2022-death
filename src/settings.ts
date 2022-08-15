@@ -4,9 +4,9 @@ import {
   GL_DEPTH_BUFFER_BIT,
 } from './rendering/gl/gl-constants';
 import { RendererSettings } from './rendering/renderer-settings';
-
+//rgb(252, 255, 238)
 export const defaultRendererSettings: RendererSettings = {
-  clearColor: [1, 1, 1, 1],
+  clearColor: [252 / 255, 255 / 255, 238 / 255, 1],
   clearMask: GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
   resolution: [1920, 1080],
   antialias: true,
@@ -14,7 +14,7 @@ export const defaultRendererSettings: RendererSettings = {
 
 export const defaultDebugSettings: DebugSettings = {
   showSpector: false,
-  showStats: false,
+  showStats: true,
   forceMonetization: false,
 };
 

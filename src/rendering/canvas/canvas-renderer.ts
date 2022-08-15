@@ -1,18 +1,17 @@
-import { Character } from '../../game/character';
+import { Character, Status } from '../../game/character';
 import { Scene } from '../../game/scene';
 import {
   darken,
   mixRyb,
   rgbaString,
   rgbString,
+  rgbToRgbaString,
   rgbToRyb,
   rybToRgb,
 } from '../../math/color';
-import { TAU } from '../../math/util';
 import { Vector2 } from '../../math/vector2';
-import { add, scale, Vector3 } from '../../math/vector3';
+import { Vector3 } from '../../math/vector3';
 import settings from '../../settings';
-import { RgbaColor } from '../../types';
 import { Canvas } from '../canvas';
 import { Renderer } from '../renderer';
 
@@ -38,41 +37,49 @@ export class CanvasRenderer implements Renderer {
     this.ctx.fillText('CLICK TO START', hw, hh);
   }
 
-  private _clear(color: RgbaColor) {
-    this.ctx.save();
-    this.ctx.fillStyle = rgbaString(color);
-    this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    this.ctx.restore();
+  private _clear() {
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
   }
 
   private _renderCharacter(c: Character) {
     const ctx = this.ctx;
     const strokeWidth = 4;
-    ctx.save();
-    ctx.fillStyle = rgbString(c.color);
-    ctx.strokeStyle = rgbString(darken(c.color, 50));
+    const alpha = c.isAlive() ? 1 : 0.5;
+    ctx.fillStyle = rgbToRgbaString(c.color, alpha);
+    ctx.strokeStyle = c.followPointer
+      ? rgbString(darken(c.color, 65))
+      : rgbString(darken(c.color, 25));
     ctx.lineWidth = strokeWidth;
-    ctx.fillRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);
-    if (c.followPointer) {
-      ctx.strokeRect(c.pos[0], c.pos[1], c.size[0], c.size[1]);
+    if (c.status === Status.Alive) {
+      ctx.roundRect(c.pos[0], c.pos[1], c.size[0], c.size[1], 4);
+    } else if (c.status === Status.Dead) {
+      ctx.roundRect(c.pos[0], c.pos[1], c.size[0], c.size[1], 25, 25, 4, 4);
     }
-    ctx.restore();
+
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  private _renderHud(scene: Scene) {
+    //TODO
   }
 
   render(scene: Scene, pointerPosition?: Vector2): void {
-    this._clear(
-      settings.rendererSettings.clearColor.map((c) => c * 255) as RgbaColor,
-    );
+    const clearColor = settings.rendererSettings.clearColor;
+
+    this.canvas.canvas.style.backgroundColor = rgbaString([
+      clearColor[0] * 255,
+      clearColor[1] * 255,
+      clearColor[2] * 255,
+      clearColor[3],
+    ]);
+    this._clear();
 
     const ctx = this.ctx;
     if (pointerPosition) {
       const col_a = scene.a.color;
       const col_b = scene.b.color;
-      const col_mix: Vector3 = [0, 0, 0];
-      add(col_mix, col_a, col_b);
-      col_mix[0] = Math.min(255, col_mix[0]);
-      col_mix[1] = Math.min(255, col_mix[1]);
-      col_mix[2] = Math.min(255, col_mix[2]);
+      const col_mix = rybToRgb(mixRyb(rgbToRyb(col_a), rgbToRyb(col_b)));
 
       let col: Vector3 = [0, 0, 0];
       let alpha = 0.5;
@@ -86,19 +93,26 @@ export class CanvasRenderer implements Renderer {
         col = col_b;
         alpha = 1;
       }
-      ctx.save();
       ctx.fillStyle = rgbaString([...col, alpha]);
-      ctx.beginPath();
-      ctx.arc(pointerPosition[0], pointerPosition[1], 16, 0, TAU, false);
+      ctx.strokeStyle = '#000000';
+      ctx.circle(pointerPosition[0], pointerPosition[1], 16);
       ctx.fill();
-      ctx.restore();
+      ctx.stroke();
     }
 
+    if (scene.a_body) {
+      this._renderCharacter(scene.a_body);
+    }
+    if (scene.b_body) {
+      this._renderCharacter(scene.b_body);
+    }
     this._renderCharacter(scene.a);
     this._renderCharacter(scene.b);
 
     for (const e of scene.e) {
       this._renderCharacter(e);
     }
+
+    this._renderHud(scene);
   }
 }
