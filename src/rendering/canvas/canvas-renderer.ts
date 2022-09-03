@@ -1,7 +1,8 @@
-import { Character, Status } from '../../game/character';
+import { Character, CharacterType, Status } from '../../game/character';
 import { Scene } from '../../game/scene';
 import {
   darken,
+  lighten,
   mixRyb,
   rgbaString,
   rgbString,
@@ -9,7 +10,7 @@ import {
   rgbToRyb,
   rybToRgb,
 } from '../../math/color';
-import { Vector2 } from '../../math/vector2';
+import { add, normalize, scale, subtract, Vector2 } from '../../math/vector2';
 import { Vector3 } from '../../math/vector3';
 import settings from '../../settings';
 import { Canvas } from '../canvas';
@@ -41,7 +42,7 @@ export class CanvasRenderer implements Renderer {
     this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
   }
 
-  private _renderCharacter(c: Character) {
+  private _renderCharacter(c: Character, pointerPosition?: Vector2) {
     const ctx = this.ctx;
     const strokeWidth = 4;
     const alpha = c.isAlive() ? 1 : 0.5;
@@ -50,20 +51,141 @@ export class CanvasRenderer implements Renderer {
       ? rgbString(darken(c.color, 65))
       : rgbString(darken(c.color, 25));
     ctx.lineWidth = strokeWidth;
+    const corner = 4;
     if (c.status === Status.Alive) {
-      ctx.roundRect(c.pos[0], c.pos[1], c.size[0], c.size[1], 4);
+      ctx.roundRect(
+        c.pos[0],
+        c.pos[1],
+        c.size[0],
+        c.size[1],
+        corner,
+        corner,
+        4,
+        4,
+      );
     } else if (c.status === Status.Dead) {
       ctx.roundRect(c.pos[0], c.pos[1], c.size[0], c.size[1], 25, 25, 4, 4);
     }
-
     ctx.fill();
     ctx.stroke();
+
+    if (c.type == CharacterType.Player && c.isDead()) {
+      this._drawGhostFace(ctx, c, pointerPosition);
+    } else if (c.type == CharacterType.PlayerBody) {
+      this._drawPlayerBodyFace(ctx, c);
+    } else if (c.type == CharacterType.Player) {
+      this._drawPlayerFace(ctx, c, pointerPosition);
+    } else if (c.type == CharacterType.Enemy) {
+      this._drawEnemyFace(ctx, c);
+    }
+  }
+
+  private _drawEnemyFace(ctx: CanvasRenderingContext2D, c: Character) {
+    return;
+  }
+
+  private _drawPlayerFace(
+    ctx: CanvasRenderingContext2D,
+    c: Character,
+    pointerPosition?: Vector2,
+  ) {
+    const pcv: Vector2 = [0, 0];
+    normalize(pcv, subtract(pcv, pointerPosition ?? c.pos, c.pos));
+
+    ctx.fillStyle = rgbString(darken(c.color, 75));
+    const eyePadding = c.size[0] * 0.2;
+    const eyeSize = 8;
+    const leftEye = add([0, 0], c.center, [-eyePadding, -10]);
+    ctx.beginPath();
+    ctx.circle(leftEye[0], leftEye[1], eyeSize);
+    ctx.fill();
+    const rightEye = add([0, 0], c.center, [eyePadding, -10]);
+    ctx.circle(rightEye[0], rightEye[1], eyeSize);
+    ctx.fill();
+
+    const pupilSize = eyeSize * 0.5;
+    const dr = (eyeSize - pupilSize) * 0.5;
+    const pd: Vector2 = [0, 0];
+    scale(pd, pcv, dr);
+    const leftPupil = add([0, 0], leftEye, pd);
+    ctx.fillStyle = rgbString(lighten(c.color, 25));
+    ctx.circle(leftPupil[0], leftPupil[1], pupilSize);
+    ctx.fill();
+    const rightPupil = add([0, 0], rightEye, pd);
+    ctx.circle(rightPupil[0], rightPupil[1], pupilSize);
+    ctx.fill();
+
+    ctx.fillStyle = rgbString(darken(c.color, 95));
+    const mouthSize = 10;
+    const mouthPadding: Vector2 = [0, c.size[1] * 0.125];
+    const mouth = add([0, 0], c.center, pd);
+    add(mouth, mouth, mouthPadding);
+    ctx.roundRect(mouth[0], mouth[1], mouthSize * 1.5, mouthSize, 0, 0, 4, 4);
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  private _drawPlayerBodyFace(ctx: CanvasRenderingContext2D, c: Character) {
+    const eyePadding = c.size[0] * 0.2;
+    const leftEye = add([0, 0], c.center, [-eyePadding, -10]);
+    const rightEye = add([0, 0], c.center, [eyePadding, -10]);
+    const eyeSize = 24;
+    const mouth = add([0, 0], c.center, [0, 8]);
+    ctx.fillStyle = rgbString(darken(c.color, 75));
+    ctx.font = `normal 1000 ${eyeSize}px sans-serif`;
+    ctx.fillText('X', leftEye[0], leftEye[1]);
+    ctx.fillText('X', rightEye[0], rightEye[1]);
+    ctx.beginPath();
+    ctx.roundRect(mouth[0], mouth[1], 15, 10, 4);
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  private _drawGhostFace(
+    ctx: CanvasRenderingContext2D,
+    c: Character,
+    pointerPosition?: Vector2,
+  ) {
+    const pcv: Vector2 = [0, 0];
+    normalize(pcv, subtract(pcv, pointerPosition ?? c.pos, c.pos));
+
+    ctx.fillStyle = rgbString(darken(c.color, 75));
+    const eyePadding = c.size[0] * 0.2;
+    const eyeSize = 8;
+    const leftEye = add([0, 0], c.center, [-eyePadding, -10]);
+    ctx.beginPath();
+    ctx.circle(leftEye[0], leftEye[1], eyeSize);
+    ctx.fill();
+    const rightEye = add([0, 0], c.center, [eyePadding, -10]);
+    ctx.circle(rightEye[0], rightEye[1], eyeSize);
+    ctx.fill();
+
+    const pupilSize = eyeSize * 0.5;
+    const dr = (eyeSize - pupilSize) * 0.5;
+    const pd: Vector2 = [0, 0];
+    scale(pd, pcv, dr);
+    const leftPupil = add([0, 0], leftEye, pd);
+    ctx.fillStyle = rgbString(lighten(c.color, 25));
+    ctx.circle(leftPupil[0], leftPupil[1], pupilSize);
+    ctx.fill();
+    const rightPupil = add([0, 0], rightEye, pd);
+    ctx.circle(rightPupil[0], rightPupil[1], pupilSize);
+    ctx.fill();
+
+    ctx.fillStyle = rgbString(darken(c.color, 95));
+    const mouthSize = 10;
+    const mouthPadding: Vector2 = [0, c.size[1] * 0.125];
+    const mouth = add([0, 0], c.center, pd);
+    add(mouth, mouth, mouthPadding);
+    ctx.roundRect(mouth[0], mouth[1], mouthSize * 1.5, mouthSize, 4);
+    ctx.fill();
+    ctx.closePath();
   }
 
   private _renderHud(scene: Scene) {
     const ctx = this.ctx;
     const scoreFontSize = 40;
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = '#FFFFFF';
     ctx.font = `normal bold ${scoreFontSize}px sans-serif`;
     const score = Math.floor(scene.score);
     ctx.fillText(`${score}`, 100, scoreFontSize);
@@ -99,7 +221,7 @@ export class CanvasRenderer implements Renderer {
         alpha = 1;
       }
       ctx.fillStyle = rgbaString([...col, alpha]);
-      ctx.strokeStyle = '#000000';
+      ctx.strokeStyle = '#FFFFFF';
       ctx.circle(pointerPosition[0], pointerPosition[1], 16);
       ctx.fill();
       ctx.stroke();
@@ -111,8 +233,8 @@ export class CanvasRenderer implements Renderer {
     if (scene.b_body) {
       this._renderCharacter(scene.b_body);
     }
-    this._renderCharacter(scene.a);
-    this._renderCharacter(scene.b);
+    this._renderCharacter(scene.a, pointerPosition);
+    this._renderCharacter(scene.b, pointerPosition);
 
     for (const e of scene.e) {
       this._renderCharacter(e);

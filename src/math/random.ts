@@ -1,4 +1,5 @@
 import { Radian, Random } from '../types';
+import { TAU } from './util';
 import { Vector2 } from './vector2';
 
 export function xmur3(seed: string): () => number {
@@ -54,7 +55,7 @@ export function getBoundRandomIntInclusive(
   return getBoundRandomInt(rand, min, max + 1);
 }
 
-export function getRandomPointOnCircle(rand: Random, r: Radian): Vector2 {
-  const angle = getBoundRandomInt(rand, 0, 360)();
+export function getRandomPointOnCircle(rand: Random, r: number): Vector2 {
+  const angle = getBoundRandomInt(rand, 0, TAU)();
   return [r * Math.cos(angle), r * Math.sin(angle)];
 }

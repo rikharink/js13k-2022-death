@@ -16,6 +16,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import { Radian } from '../types';
 import { nearlyEqual as ne } from './util';
 
 export type Vector2 = [x: number, y: number];
@@ -141,4 +142,11 @@ export function perpendicular(
   out[1] = dxdy[0];
   clockwise ? (out[1] = -out[1]) : (out[0] = -out[0]);
   return normalize(out, out);
+}
+
+export function angle(a: Vector2, b: Vector2): Radian {
+  const dotp = dot(a, b);
+  const la = length(a);
+  const lb = length(b);
+  return Math.acos(dotp / (la * lb));
 }

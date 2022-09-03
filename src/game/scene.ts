@@ -46,5 +46,10 @@ function interpolateCharacter(
   n: Character,
   alpha: number,
 ): Character {
-  return new Character({ ...n, pos: vlerp([0, 0], p.pos, n.pos, alpha) });
+  const c = new Character({
+    ...n,
+    pos: vlerp([0, 0], p.pos, n.pos, alpha),
+  });
+  c.maxHealth = lerp(p.maxHealth, n.maxHealth, alpha);
+  return c;
 }

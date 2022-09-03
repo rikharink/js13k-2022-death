@@ -36,6 +36,7 @@ export class Character {
   public size: Vector2;
   public name: string;
   public speed: number;
+  public maxHealth: number;
   public health: number;
   public status: Status;
   public followPointer: boolean;
@@ -60,6 +61,7 @@ export class Character {
     this.size = size;
     this.color = color;
     this.name = name;
+    this.maxHealth = health;
     this.health = health;
     this.speed = speed;
     this.status = status;
@@ -69,7 +71,10 @@ export class Character {
   }
 
   public clone(): Character {
-    return new Character({ ...this });
+    const maxHealth = this.maxHealth;
+    const c = new Character({ ...this });
+    c.maxHealth = maxHealth;
+    return c;
   }
 
   public get center(): Vector2 {

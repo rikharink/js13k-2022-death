@@ -1,6 +1,6 @@
 import { AudioManager } from '../audio/audio-manager';
 import { stats } from '../debug/gui';
-import { getRandom } from '../math/random';
+import { getRandom, getRandomPointOnCircle } from '../math/random';
 import { add, normalize, scale, subtract, Vector2 } from '../math/vector2';
 import { Renderer } from '../rendering/renderer';
 import settings from '../settings';
@@ -86,6 +86,7 @@ export class Game {
       color: [255, 128, 176],
       name: 'a',
       type: CharacterType.Player,
+      speed: 3,
     });
 
     const b = new Character({
@@ -94,6 +95,7 @@ export class Game {
       color: [148, 140, 222],
       name: 'b',
       type: CharacterType.Player,
+      speed: 3,
     });
 
     this._currentScene = { a: a, b: b, e: [], score: 0 };
@@ -158,12 +160,16 @@ export class Game {
   }
 
   private _spawnEnemy() {
+    const res = settings.rendererSettings.resolution;
+    const r = Math.max(res[0], res[1]);
+    const c = scale([0, 0], res, 0.5);
     this._currentScene.e.push(
       new Character({
-        pos: [0, settings.rendererSettings.resolution[1]],
+        pos: add([0, 0], c, getRandomPointOnCircle(Math.random, r)),
         size: [32, 32],
         color: [174, 247, 189],
         name: 'e',
+        speed: 2.5,
       }),
     );
   }
@@ -172,30 +178,32 @@ export class Game {
     const a = this._currentScene.a;
     const b = this._currentScene.b;
 
+    const res = settings.rendererSettings.resolution;
+    const smallestSize = Math.min(res[0], res[1]);
+    const r = smallestSize * 0.5;
+    const c = scale([0, 0], res, 0.5);
     if (a.isAlive() && a.health <= 0) {
       a.status = Status.Dead;
       this._currentScene.a_body = a.getBody();
-      //TODO: randomize or something?
-      a.pos = [0, 0];
+      a.pos = add([0, 0], c, getRandomPointOnCircle(Math.random, r));
     }
 
     if (b.isAlive() && b.health <= 0) {
       b.status = Status.Dead;
       this._currentScene.b_body = b.getBody();
-      //TODO: randomize or something?
-      b.pos = [0, 0];
+      b.pos = add([0, 0], c, getRandomPointOnCircle(Math.random, r));
     }
 
     if (a.isDead() && a.collidesWith(this._currentScene.a_body!)) {
       this._currentScene.a_body = undefined;
       a.status = Status.Alive;
-      a.health = 100;
+      a.health = a.maxHealth;
     }
 
     if (b.isDead() && b.collidesWith(this._currentScene.b_body!)) {
       this._currentScene.b_body = undefined;
       b.status = Status.Alive;
-      b.health = 100;
+      b.health = b.maxHealth;
     }
 
     if (a.isDead() && b.isDead()) {
@@ -226,6 +234,7 @@ export class Game {
       e.target = Game._getTarget(a, b, closest);
       const movement: Vector2 = [0, 0];
       normalize(movement, subtract(movement, e.center, e.target.center));
+      scale(movement, movement, e.speed);
       subtract(e.pos, e.pos, movement);
     }
 
@@ -246,7 +255,12 @@ export class Game {
       const target: Vector2 = [0, 0];
       scale(target, add(target, a_pos, b_pos), 0.5);
       const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, target, mouse_pos));
+      const speed = Math.min(a.speed, b.speed);
+      scale(
+        movement,
+        normalize(movement, subtract(movement, target, mouse_pos)),
+        speed,
+      );
       subtract(a.pos, a.pos, movement);
       subtract(b.pos, b.pos, movement);
       return;
@@ -255,13 +269,13 @@ export class Game {
     if (a.followPointer) {
       const movement: Vector2 = [0, 0];
       normalize(movement, subtract(movement, a_pos, mouse_pos));
-      subtract(a.pos, a.pos, movement);
+      subtract(a.pos, a.pos, scale(movement, movement, a.speed));
     }
 
     if (b.followPointer) {
       const movement: Vector2 = [0, 0];
       normalize(movement, subtract(movement, b_pos, mouse_pos));
-      subtract(b.pos, b.pos, movement);
+      subtract(b.pos, b.pos, scale(movement, movement, b.speed));
     }
   }
 
