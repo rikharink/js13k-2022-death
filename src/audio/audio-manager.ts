@@ -1,7 +1,6 @@
 import { Bpm, Seconds } from '../types';
 import { playKick } from './instruments/kick';
 import { playHh } from './instruments/hh';
-import defaultSong from './songs';
 import { SfxTrigger } from './types';
 import { Song } from './song';
 import { createDubDelay } from './effects/dubdelay';
@@ -19,7 +18,7 @@ export class AudioManager {
   private _tempo: Bpm;
   private _noteIndex = 0;
   private _muted = false;
-  private _currentSong = defaultSong;
+  private _currentSong?: Song = undefined;
   private _dubDelay: AudioNode;
   private _dubInput: AudioNode;
   private _reverb: AudioNode;
@@ -96,6 +95,7 @@ export class AudioManager {
   private _elapsedAudioTime: Seconds = 0;
 
   public tick() {
+    if (!this._currentSong) return;
     const kick_pattern =
       this._currentSong.kick.notes[
         this._currentSong.kick.index % this._currentSong.kick.notes.length
