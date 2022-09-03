@@ -1,6 +1,6 @@
 export interface Song {
-  kick: Bar[];
-  hh: Bar[];
+  kick: { index: number; notes: Bar[] };
+  hh: { index: number; notes: Bar[] };
 }
 
-export type Bar = number[];
+export type Bar = boolean[];

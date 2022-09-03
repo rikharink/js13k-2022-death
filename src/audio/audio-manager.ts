@@ -5,6 +5,7 @@ import defaultSong from './songs';
 import { SfxTrigger } from './types';
 import { Song } from './song';
 import { createDubDelay } from './effects/dubdelay';
+import { createReverb } from './effects/reverb';
 
 interface AudioManagerOptions {
   tempo: Bpm;
@@ -17,11 +18,12 @@ export class AudioManager {
   private _ctx: AudioContext;
   private _tempo: Bpm;
   private _noteIndex = 0;
-  private _barIndex = 0;
   private _muted = false;
   private _currentSong = defaultSong;
   private _dubDelay: AudioNode;
   private _dubInput: AudioNode;
+  private _reverb: AudioNode;
+  private _reverbSend: AudioNode;
 
   public get ctx(): AudioContext {
     return this._ctx;
@@ -31,12 +33,12 @@ export class AudioManager {
     return this._master;
   }
 
-  private get _sixteenthTiming(): Seconds {
-    return (this._tempo / 60.0) * 0.0625;
+  private get _secondsPerBeat(): Seconds {
+    return 1 / (this._tempo / 60.0);
   }
 
-  private get _quarterTiming(): Seconds {
-    return (this._tempo / 60.0) * 0.25;
+  private get _sixteenthTiming(): Seconds {
+    return this._secondsPerBeat * 0.25;
   }
 
   public constructor({ tempo = 128 }: Partial<AudioManagerOptions> = {}) {
@@ -57,6 +59,13 @@ export class AudioManager {
     this._dubInput = this._ctx.createGain();
     this._dubInput.connect(this._music);
     this._dubInput.connect(this._dubDelay);
+
+    this._reverb = createReverb(this._ctx, 1);
+    this._reverb.connect(this._music);
+
+    this._reverbSend = this._ctx.createGain();
+    this._reverbSend.connect(this._music);
+    this._reverbSend.connect(this._reverb);
   }
 
   private _mute() {
@@ -88,9 +97,13 @@ export class AudioManager {
 
   public tick() {
     const kick_pattern =
-      this._currentSong.kick[this._barIndex % this._currentSong.kick.length];
+      this._currentSong.kick.notes[
+        this._currentSong.kick.index % this._currentSong.kick.notes.length
+      ];
     const hh_pattern =
-      this._currentSong.hh[this._barIndex % this._currentSong.hh.length];
+      this._currentSong.hh.notes[
+        this._currentSong.hh.index % this._currentSong.hh.notes.length
+      ];
     const ctx: AudioContext = this.ctx;
     const output: AudioNode = this._music;
     if (this._startAudioTime == null) {
@@ -99,20 +112,33 @@ export class AudioManager {
     this._elapsedAudioTime = ctx.currentTime - this._startAudioTime;
 
     if (this._elapsedAudioTime >= this._sixteenthTiming) {
-      if (hh_pattern.includes(this._noteIndex)) {
-        playHh(ctx.currentTime, ctx, output);
+      if (hh_pattern[this._noteIndex % hh_pattern.length]) {
+        playHh(ctx.currentTime, ctx, this._reverbSend);
       }
-      if (kick_pattern.includes(this._noteIndex)) {
+      if (kick_pattern[this._noteIndex % kick_pattern.length]) {
         playKick(ctx.currentTime, ctx, output);
       }
-
       this._noteIndex++;
-      if (this._noteIndex == 16) {
-        this._barIndex++;
-        this._barIndex = this._barIndex % 16;
-        this._noteIndex = 0;
-      }
       this._startAudioTime = ctx.currentTime;
+      if (this._noteIndex === 0) return;
+      if (
+        this._noteIndex %
+          this._currentSong.kick.notes[this._currentSong.kick.index].length ===
+        0
+      ) {
+        this._currentSong.kick.index =
+          (this._currentSong.kick.index + 1) %
+          this._currentSong.kick.notes.length;
+      }
+
+      if (
+        this._noteIndex %
+          this._currentSong.hh.notes[this._currentSong.hh.index].length ===
+        0
+      ) {
+        this._currentSong.hh.index =
+          (this._currentSong.hh.index + 1) % this._currentSong.hh.notes.length;
+      }
     }
   }
 

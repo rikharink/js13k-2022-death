@@ -5,13 +5,16 @@ import { RgbColor, UUIDV4 } from '../types';
 import { uuidv4 } from '../util';
 
 interface CharacterOptions {
+  id: UUIDV4;
   pos: Vector2;
-  size: Vector2;
   color: RgbColor;
+  size: Vector2;
   name: string;
   speed: number;
   health: number;
   status: Status;
+  followPointer: boolean;
+  target?: Character;
   type: CharacterType;
 }
 
@@ -27,7 +30,7 @@ export const enum CharacterType {
 }
 
 export class Character {
-  public id: UUIDV4 = uuidv4(Math.random);
+  public id: UUIDV4;
   public pos: Vector2;
   public color: RgbColor;
   public size: Vector2;
@@ -40,6 +43,7 @@ export class Character {
   public type: CharacterType;
 
   constructor({
+    id = uuidv4(Math.random),
     pos = [0, 0],
     size = [64, 64],
     color = [0, 0, 255],
@@ -48,7 +52,10 @@ export class Character {
     health = 100,
     status = Status.Alive,
     type = CharacterType.Enemy,
+    followPointer = false,
+    target = undefined,
   }: Partial<CharacterOptions>) {
+    this.id = id;
     this.pos = pos;
     this.size = size;
     this.color = color;
@@ -57,7 +64,12 @@ export class Character {
     this.speed = speed;
     this.status = status;
     this.type = type;
-    this.followPointer = false;
+    this.followPointer = followPointer;
+    this.target = target;
+  }
+
+  public clone(): Character {
+    return new Character({ ...this });
   }
 
   public get center(): Vector2 {

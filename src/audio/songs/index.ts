@@ -1,11 +1,14 @@
 import { Song } from '../song';
 
 const song: Song = {
-  kick: [
-    [0, 4, 8, 12],
-    [0, 4, 8, 10, 12],
-  ],
-  hh: [[2, 6, 10, 14]],
+  kick: {
+    index: 0,
+    notes: [[false]],
+  },
+  hh: {
+    index: 0,
+    notes: [[false, false, true, false]],
+  },
 };
 
 export default song;

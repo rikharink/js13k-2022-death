@@ -61,7 +61,12 @@ export class CanvasRenderer implements Renderer {
   }
 
   private _renderHud(scene: Scene) {
-    //TODO
+    const ctx = this.ctx;
+    const scoreFontSize = 40;
+    ctx.fillStyle = '#000000';
+    ctx.font = `normal bold ${scoreFontSize}px sans-serif`;
+    const score = Math.floor(scene.score);
+    ctx.fillText(`${score}`, 100, scoreFontSize);
   }
 
   render(scene: Scene, pointerPosition?: Vector2): void {

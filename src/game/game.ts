@@ -1,13 +1,15 @@
 import { AudioManager } from '../audio/audio-manager';
 import { stats } from '../debug/gui';
+import { getRandom } from '../math/random';
 import { add, normalize, scale, subtract, Vector2 } from '../math/vector2';
 import { Renderer } from '../rendering/renderer';
 import settings from '../settings';
-import { Milliseconds } from '../types';
+import { Milliseconds, Random } from '../types';
 import { Character, CharacterType, Status } from './character';
 import { InputManager } from './input-manager';
 import { interpolateScene, Scene } from './scene';
 
+const seed = 'TILL DEATH DO US PART';
 export class Game {
   private _running = true;
   private _handle = 0;
@@ -19,10 +21,11 @@ export class Game {
   private _audioManager?: AudioManager;
   private _currentScene!: Scene;
   private _previousScene?: Scene;
+  private _rng: Random = getRandom(seed);
 
   private _audioInitHandler: () => void = (() => {
     console.log('init audio');
-    this._audioManager = new AudioManager();
+    this._audioManager = new AudioManager({ tempo: 147 });
     this.renderer.canvas.canvas.removeEventListener(
       'click',
       this._audioInitHandler,
@@ -93,7 +96,7 @@ export class Game {
       type: CharacterType.Player,
     });
 
-    this._currentScene = { a: a, b: b, e: [] };
+    this._currentScene = { a: a, b: b, e: [], score: 0 };
   }
 
   private _reset() {
@@ -117,10 +120,16 @@ export class Game {
       while (this._accumulator >= settings.dt) {
         this._t += settings.dt;
         //DO FIXED STEP STUFF
-        this._updateEnemies();
-        this._updatePlayer();
+        this._movePlayer();
+        this._moveEnemies();
+        this._handleCollisions();
+        this._updatePlayerStatus();
         this._stepcount++;
         this._accumulator -= settings.dt;
+        this._previousScene = JSON.parse(JSON.stringify(this._currentScene));
+        this._currentScene.score +=
+          (+this._currentScene.a.isAlive() + +this._currentScene.b.isAlive()) *
+          0.0625;
       }
       const alpha = this._accumulator / settings.dt;
       //DO VARIABLE STEP STUFF
@@ -131,7 +140,6 @@ export class Game {
         ? interpolateScene(this._currentScene, this._previousScene, alpha)
         : this._currentScene;
       this.renderer.render(interpolatedScene, this._input.pointerPosition);
-      this._previousScene = JSON.parse(JSON.stringify(this._currentScene));
     }
     this._then = now;
     if (process.env.NODE_ENV === 'development') {
@@ -160,58 +168,9 @@ export class Game {
     );
   }
 
-  private _updateEnemies() {
+  private _updatePlayerStatus() {
     const a = this._currentScene.a;
     const b = this._currentScene.b;
-    for (const e of this._currentScene.e) {
-      const closest = e.closest(a, b);
-      e.target = Game._getTarget(a, b, closest);
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, e.center, e.target.center));
-      subtract(e.pos, e.pos, movement);
-
-      if (a.health > 0 && e.collidesWith(a)) {
-        a.health--;
-      }
-      if (b.health > 0 && e.collidesWith(b)) {
-        b.health--;
-      }
-    }
-
-    if (this._stepcount % 100 === 0 && this._currentScene.e.length < 10) {
-      this._spawnEnemy();
-    }
-  }
-
-  private _updatePlayer() {
-    const mouse_pos = this._input.pointerPosition;
-    const bound = this.charactersBound;
-    const a = this._currentScene.a;
-    const b = this._currentScene.b;
-    const a_pos = a.center;
-    const b_pos = b.center;
-
-    if (bound && (a.followPointer || b.followPointer)) {
-      const target: Vector2 = [0, 0];
-      scale(target, add(target, a_pos, b_pos), 0.5);
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, target, mouse_pos));
-      subtract(a.pos, a.pos, movement);
-      subtract(b.pos, b.pos, movement);
-      return;
-    }
-
-    if (a.followPointer) {
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, a_pos, mouse_pos));
-      subtract(a.pos, a.pos, movement);
-    }
-
-    if (b.followPointer) {
-      const movement: Vector2 = [0, 0];
-      normalize(movement, subtract(movement, b_pos, mouse_pos));
-      subtract(b.pos, b.pos, movement);
-    }
 
     if (a.isAlive() && a.health <= 0) {
       a.status = Status.Dead;
@@ -244,6 +203,66 @@ export class Game {
     }
 
     this.charactersBound = a.isAlive() && b.isAlive();
+  }
+
+  private _handleCollisions() {
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
+    for (const e of this._currentScene.e) {
+      if (a.isAlive() && a.collidesWith(e)) {
+        a.health--;
+      }
+      if (b.isAlive() && b.collidesWith(e)) {
+        b.health--;
+      }
+    }
+  }
+
+  private _moveEnemies() {
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
+    for (const e of this._currentScene.e) {
+      const closest = e.closest(a, b);
+      e.target = Game._getTarget(a, b, closest);
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, e.center, e.target.center));
+      subtract(e.pos, e.pos, movement);
+    }
+
+    if (this._stepcount % 100 === 0 && this._currentScene.e.length < 10) {
+      this._spawnEnemy();
+    }
+  }
+
+  private _movePlayer() {
+    const mouse_pos = this._input.pointerPosition;
+    const bound = this.charactersBound;
+    const a = this._currentScene.a;
+    const b = this._currentScene.b;
+    const a_pos = a.center;
+    const b_pos = b.center;
+
+    if (bound && (a.followPointer || b.followPointer)) {
+      const target: Vector2 = [0, 0];
+      scale(target, add(target, a_pos, b_pos), 0.5);
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, target, mouse_pos));
+      subtract(a.pos, a.pos, movement);
+      subtract(b.pos, b.pos, movement);
+      return;
+    }
+
+    if (a.followPointer) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, a_pos, mouse_pos));
+      subtract(a.pos, a.pos, movement);
+    }
+
+    if (b.followPointer) {
+      const movement: Vector2 = [0, 0];
+      normalize(movement, subtract(movement, b_pos, mouse_pos));
+      subtract(b.pos, b.pos, movement);
+    }
   }
 
   public start() {

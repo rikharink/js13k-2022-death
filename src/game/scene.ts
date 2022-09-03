@@ -1,5 +1,6 @@
-import { lerp } from '../math/vector2';
+import { lerp as vlerp } from '../math/vector2';
 import { Character } from './character';
+import { lerp } from '../math/util';
 
 export interface Scene {
   a: Character;
@@ -9,6 +10,8 @@ export interface Scene {
   b_body?: Character;
 
   e: Character[];
+
+  score: number;
 }
 
 export function interpolateScene(
@@ -26,13 +29,15 @@ export function interpolateScene(
       e.push(ce);
     }
   }
-
+  const a = interpolateCharacter(previous.a, current.a, alpha);
+  const b = interpolateCharacter(previous.b, current.b, alpha);
   return {
-    a: interpolateCharacter(previous.a, current.a, alpha),
-    b: interpolateCharacter(previous.b, current.b, alpha),
+    a,
+    b,
     e,
     a_body: current.a_body,
     b_body: current.b_body,
+    score: lerp(previous.score, current.score, alpha),
   };
 }
 
@@ -41,8 +46,5 @@ function interpolateCharacter(
   n: Character,
   alpha: number,
 ): Character {
-  return new Character({
-    ...p,
-    pos: lerp([0, 0], p.pos, n.pos, alpha),
-  });
+  return new Character({ ...n, pos: vlerp([0, 0], p.pos, n.pos, alpha) });
 }
